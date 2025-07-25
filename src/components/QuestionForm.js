@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
-function QuestionForm(props) {
+function QuestionForm({ onAddQuestion }) {
   const [formData, setFormData] = useState({
     prompt: "",
     answer1: "",
@@ -10,19 +10,60 @@ function QuestionForm(props) {
     correctIndex: 0,
   });
 
-  function handleChange(event) {
+  // Track mounted state
+  const [isMounted, setIsMounted] = useState(true);
+
+  useEffect(() => {
+    return () => {
+      // Cleanup function runs when component unmounts
+      setIsMounted(false);
+    };
+  }, []);
+
+  function handleChange(e) {
     setFormData({
       ...formData,
-      [event.target.name]: event.target.value,
+      [e.target.name]: e.target.value,
     });
   }
 
-  function handleSubmit(event) {
-    event.preventDefault();
-    console.log(formData);
-  }
+  function handleSubmit(e) {
+    e.preventDefault();
+    
+    const questionData = {
+      prompt: formData.prompt,
+      answers: [
+        formData.answer1,
+        formData.answer2,
+        formData.answer3,
+        formData.answer4,
+      ].filter(answer => answer !== ""),
+      correctIndex: parseInt(formData.correctIndex),
+    };
 
-  return (
+    fetch("http://localhost:4000/questions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(questionData),
+    })
+      .then((r) => r.json())
+      .then((newQuestion) => {
+        if (isMounted) {  // Only update if component is still mounted
+          onAddQuestion(newQuestion);
+          setFormData({
+            prompt: "",
+            answer1: "",
+            answer2: "",
+            answer3: "",
+            answer4: "",
+            correctIndex: 0,
+          });
+        }
+      });
+  }
+return (
     <section>
       <h1>New Question</h1>
       <form onSubmit={handleSubmit}>
@@ -78,16 +119,20 @@ function QuestionForm(props) {
             value={formData.correctIndex}
             onChange={handleChange}
           >
-            <option value="0">{formData.answer1}</option>
-            <option value="1">{formData.answer2}</option>
-            <option value="2">{formData.answer3}</option>
-            <option value="3">{formData.answer4}</option>
+            <option value="0">{formData.answer1 || "Answer 1"}</option>
+            <option value="1">{formData.answer2 || "Answer 2"}</option>
+            <option value="2">{formData.answer3 || "Answer 3"}</option>
+            <option value="3">{formData.answer4 || "Answer 4"}</option>
           </select>
         </label>
         <button type="submit">Add Question</button>
       </form>
     </section>
   );
+
+  // ... rest of your component code
 }
 
 export default QuestionForm;
+
+  
